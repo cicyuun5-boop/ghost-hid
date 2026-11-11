@@ -43,7 +43,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.sj010.ghid"
+        applicationId = "cc.vpc.ghid2"
         minSdk = 28
         targetSdk = 35
         versionCode = 10
