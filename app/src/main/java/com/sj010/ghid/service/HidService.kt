@@ -208,6 +208,7 @@ class HidService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        startTcpBridge()
         instance = this
         try {
             logFile = File(getExternalFilesDir(null), "gateway.log")
@@ -1251,6 +1252,40 @@ class HidService : Service() {
             "register".equals(cmd, ignoreCase = true) -> registerHidApp()
             "status".equals(cmd, ignoreCase = true) -> writeStatusFile()
         }
+    }
+
+
+    // ==== VPC TCP 桥：收 "dx dy [buttons]" 直接走 HID ====
+    private fun startTcpBridge() {
+        Thread {
+            try {
+                val ss = java.net.ServerSocket(8089)
+                log("TCP bridge on 8089")
+                while (true) {
+                    val c = ss.accept()
+                    Thread {
+                        try {
+                            val br = c.getInputStream().bufferedReader()
+                            while (true) {
+                                val line = br.readLine() ?: break
+                                val p = line.trim().split(" ")
+                                if (p.size >= 2) {
+                                    val dx = p[0].toIntOrNull() ?: 0
+                                    val dy = p[1].toIntOrNull() ?: 0
+                                    val b = p.getOrNull(2)?.toIntOrNull() ?: 0
+                                    sendRawReport(2, byteArrayOf(b.toByte(), dx.toByte(), dy.toByte(), 0), 0L)
+                                }
+                            }
+                        } catch (_: Exception) {
+                        } finally {
+                            runCatching { c.close() }
+                        }
+                    }.start()
+                }
+            } catch (e: Exception) {
+                log("TCP bridge failed: ${e.message}")
+            }
+        }.start()
     }
 
     fun log(msg: String) {
