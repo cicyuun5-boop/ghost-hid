@@ -1273,7 +1273,16 @@ class HidService : Service() {
                                     val dx = p[0].toIntOrNull() ?: 0
                                     val dy = p[1].toIntOrNull() ?: 0
                                     val b = p.getOrNull(2)?.toIntOrNull() ?: 0
-                                    sendRawReport(2, byteArrayOf(b.toByte(), dx.toByte(), dy.toByte(), 0), 0L)
+                                    // HID 位移是有符号 8 位（±127），大位移必须拆包，否则溢出反方向
+                                    var rx = dx
+                                    var ry = dy
+                                    while (rx != 0 || ry != 0) {
+                                        val sx = rx.coerceIn(-120, 120)
+                                        val sy = ry.coerceIn(-120, 120)
+                                        sendRawReport(2, byteArrayOf(b.toByte(), sx.toByte(), sy.toByte(), 0), 0L)
+                                        rx -= sx
+                                        ry -= sy
+                                    }
                                 }
                             }
                         } catch (_: Exception) {
